@@ -1136,6 +1136,50 @@ cpn.to_feather('cpn_ts7.feather')
 
 del cpn, pis, pmids_year, pub_pi_key, year_first_pub_pi, coded
 
+# ************************* #
+# %%% Zenodo upload
+# ************************* #
+
+# Prepare the publicly available data for upload to Zenodo
+
+
+# For the grants, first retrieve a clean file, then add PI name and call URL
+cpn = (
+  pd.read_feather('cpn_ts7.feather')
+  [['cpn', 'opnum', 'pi_id', 'target']]
+  .astype({'target': 'int8'})
+)
+
+pis = (
+  pd.read_feather('aplid_clean.feather')
+  [['cpn', 'contact_pi_name']]
+  .drop_duplicates('cpn')
+  .query('cpn in @cpn.cpn')
+)
+
+calls = (
+  pd.read_feather('calls_clean.feather')
+  .rename(columns={'document_number': 'opnum', 'url': 'call_url'})
+  [['opnum', 'call_url']]
+)
+
+cpn2 = (
+  cpn
+  .merge(pis, on='cpn')
+  .merge(calls, on='opnum')
+)
+cpn2.to_csv('../results/grants.csv', index=False)
+
+# For the publications, retrieve a clean file and remove publications not used
+pubs = (
+  pd.read_feather('pubs_clean.feather')
+  .rename(columns={'coreproject': 'cpn'})
+  .query('cpn in @cpn.cpn')
+  [['cpn', 'pmid']]
+)
+
+pubs.to_csv('../results/publications.csv', index=False)
+
 # *************************************************************************** #
 # *************************************************************************** #
 # %% Analyze
